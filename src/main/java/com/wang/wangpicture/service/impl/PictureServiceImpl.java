@@ -4,13 +4,15 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
+import cn.hutool.json.JSONUtil;;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;;
+import com.wang.wangpicture.constant.ThumbnailUrlParams;
 import com.wang.wangpicture.exception.BusinessException;
 import com.wang.wangpicture.exception.ErrorCode;
 import com.wang.wangpicture.exception.ThrowUtils;
+import com.wang.wangpicture.manager.cache.PicturePageCacheManager;
 import com.wang.wangpicture.manager.upload.FilePictureUpload;
 import com.wang.wangpicture.manager.upload.PictureUploadTemplate;
 import com.wang.wangpicture.manager.upload.UrlPictureUpload;
@@ -31,6 +33,7 @@ import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -39,6 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.wang.wangpicture.constant.ThumbnailUrlParams.THUMBNAIL_PREFIX;
+import static com.wang.wangpicture.constant.ThumbnailUrlParams.THUMBNAIL_ZOOM_256x256;
 
 /**
  * @author xwzy
@@ -51,11 +57,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         implements PictureService {
     @Resource
     private FilePictureUpload filePictureUpload;
-
     @Resource
     private UrlPictureUpload urlPictureUpload;
     @Resource
     private UserService userService;
+    @Resource
+    private PicturePageCacheManager picturePageCacheManager;
 
     @Override
     public PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser) {
@@ -87,7 +94,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         UploadPictureResult uploadPictureResult = pictureUploadTemplate.uploadPicture(inputSource, uploadPathPrefix);
         // 构造要入库的图片信息
         Picture picture = new Picture();
+        String url = uploadPictureResult.getUrl();
         picture.setUrl(uploadPictureResult.getUrl());
+        // 构造缩略图url
+        String thumbnailUrl = url + THUMBNAIL_PREFIX + THUMBNAIL_ZOOM_256x256;
+        picture.setThumbnailUrl(thumbnailUrl);
         // （构造图片name时，先判断PictureUploadRequest中是否携带picName，不携带时再根据图片信息解析出名字）
         String picName = pictureUploadRequest.getPicName();
         picture.setName(StrUtil.isBlank(picName) ? uploadPictureResult.getPicName() : picName);
@@ -109,6 +120,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         boolean result = this.saveOrUpdate(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败");
         return PictureVO.objToVo(picture);
+    }
+
+    /**
+     * 根据图片url删除cos中的图片文件
+     * @param url
+     */
+    @Override
+    public void deletePictureFile(String url){
+        filePictureUpload.deletePicture(url);
     }
 //    @Override
 //    public PictureVO uploadPicture(MultipartFile multipartFile, PictureUploadRequest pictureUploadRequest, User loginUser) {
@@ -217,12 +237,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         queryWrapper.eq(StrUtil.isNotBlank(name), "name", name);
         queryWrapper.eq(StrUtil.isNotBlank(introduction), "introduction", introduction);
         queryWrapper.eq(StrUtil.isNotBlank(category), "category", category);
-        queryWrapper.eq(ObjUtil.isNotEmpty(picSize), "pic_size", picSize);
-        queryWrapper.eq(ObjUtil.isNotEmpty(picWidth), "pic_width", picWidth);
-        queryWrapper.eq(ObjUtil.isNotEmpty(picHeight), "pic_height", picHeight);
-        queryWrapper.eq(ObjUtil.isNotEmpty(picScale), "pic_scale", picScale);
-        queryWrapper.eq(StrUtil.isNotBlank(picFormat), "pic_format", picFormat);
-        queryWrapper.eq(ObjUtil.isNotEmpty(userId), "user_id", userId);
+        queryWrapper.eq(ObjUtil.isNotEmpty(picSize), "picSize", picSize);
+        queryWrapper.eq(ObjUtil.isNotEmpty(picWidth), "picWidth", picWidth);
+        queryWrapper.eq(ObjUtil.isNotEmpty(picHeight), "picHeight", picHeight);
+        queryWrapper.eq(ObjUtil.isNotEmpty(picScale), "picScale", picScale);
+        queryWrapper.eq(StrUtil.isNotBlank(picFormat), "picFormat", picFormat);
+        queryWrapper.eq(ObjUtil.isNotEmpty(userId), "userId", userId);
         queryWrapper.eq(ObjUtil.isNotEmpty(createTime), "create_time", createTime);
         queryWrapper.eq(ObjUtil.isNotEmpty(reviewStatus), "reviewStatus", reviewStatus);
         queryWrapper.like(StrUtil.isNotBlank(reviewMessage), "reviewMessage", reviewMessage);
@@ -263,7 +283,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      * 分页获取图片封装
      */
     @Override
-    public Page<PictureVO> getPictureVOPage(Page<Picture> picturePage, HttpServletRequest request) {
+    public Page<PictureVO> getPictureVOPage(Page<Picture> picturePage) {
         List<Picture> pictureList = picturePage.getRecords();
         Page<PictureVO> pictureVOPage = new Page<>(picturePage.getCurrent(), picturePage.getSize(), picturePage.getTotal());
         if (CollUtil.isEmpty(pictureList)) {
@@ -406,6 +426,20 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
         }
         return uploadCount;
+    }
+
+    /**
+     * 获取缓存数据，如果数据为空，会重构缓存数据
+     * @param pictureQueryRequest
+     * @return
+     */
+    @Override
+    public Page<PictureVO> getPictureVOPageCache(PictureQueryRequest pictureQueryRequest) {
+        Page<PictureVO> picturePage = picturePageCacheManager.getCaffeineCache(pictureQueryRequest);
+        if(picturePage == null){
+            picturePage = picturePageCacheManager.getRedisCache(pictureQueryRequest);
+        }
+        return picturePage;
     }
 }
 

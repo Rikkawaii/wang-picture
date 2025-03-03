@@ -25,11 +25,13 @@ public interface PictureService extends IService<Picture> {
 
     PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
 
+    void deletePictureFile(String url);
+
     QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest);
 
     void validPicture(Picture picture);
 
-    Page<PictureVO> getPictureVOPage(Page<Picture> picturePage, HttpServletRequest request);
+    Page<PictureVO> getPictureVOPage(Page<Picture> picturePage);
 
     PictureVO getPictureVO(Picture picture, HttpServletRequest request);
 
@@ -48,4 +50,10 @@ public interface PictureService extends IService<Picture> {
             User loginUser
     );
 
+    /**
+     * 获取缓存数据，如果数据为空，会重构缓存
+     * @param pictureQueryRequest
+     * @return
+     */
+    Page<PictureVO> getPictureVOPageCache(PictureQueryRequest pictureQueryRequest);
 }
