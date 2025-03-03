@@ -1,12 +1,9 @@
 package com.wang.wangpicture.model.vo;
 
 import cn.hutool.json.JSONUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.alibaba.fastjson.JSON;
 import com.wang.wangpicture.model.entity.Picture;
 import lombok.Data;
-import lombok.Getter;
 import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
@@ -24,7 +21,10 @@ public class PictureVO implements Serializable {
      * 图片 url
      */
     private String url;
-
+    /**
+     * 缩略图 url
+     */
+    private String thumbnailUrl;
     /**
      * 图片名称
      */
@@ -108,7 +108,7 @@ public class PictureVO implements Serializable {
 //        } catch (JsonProcessingException e) {
 //            throw new RuntimeException(e);
 //        }
-        picture.setTags(JSONUtil.toJsonStr(pictureVO.getTags()));
+        picture.setTags(JSON.toJSONString(pictureVO.getTags()));
         return picture;
     }
 
@@ -130,6 +130,7 @@ public class PictureVO implements Serializable {
 //        }
 //        // 类型不同，需要转换
 //        pictureVO.setTags(tags);
+
         pictureVO.setTags(JSONUtil.toList(picture.getTags(), String.class));
         return pictureVO;
     }

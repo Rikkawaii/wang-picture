@@ -1,6 +1,7 @@
 package com.wang.wangpicture.controller;
 
-import cn.hutool.json.JSONUtil;
+import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wang.wangpicture.annotation.AuthCheck;
 import com.wang.wangpicture.common.BaseResponse;
@@ -81,6 +82,8 @@ public class PictureController {
         // 操作数据库
         boolean result = pictureService.removeById(id);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        // 删除cos中的图片文件
+        pictureService.deletePictureFile(oldPicture.getUrl());
         return ResultUtils.success(true);
     }
 
@@ -101,7 +104,10 @@ public class PictureController {
         Picture picture = new Picture();
         BeanUtils.copyProperties(pictureUpdateRequest, picture);
         // 注意将 list 转为 string
-        picture.setTags(JSONUtil.toJsonStr(pictureUpdateRequest.getTags()));
+//        picture.setTags(JSON.toJSONString(pictureUpdateRequest.getTags()));
+        List<String> tags = pictureUpdateRequest.getTags();
+        // 使用fastjson的话需要对null值就行手动处理
+        picture.setTags(tags == null ? null : JSON.toJSONString(tags));
         // 数据校验
         pictureService.validPicture(picture);
         // 添加审核参数
@@ -166,11 +172,10 @@ public class PictureController {
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
         // 只能查询审核通过的数据
         pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
-        // 查询数据库
-        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
-                pictureService.getQueryWrapper(pictureQueryRequest));
-        // 获取封装类
-        return ResultUtils.success(pictureService.getPictureVOPage(picturePage, request));
+        // 获取缓存数据，如果数据为空，会重构缓存
+        Page<PictureVO> pictureVOPage = pictureService.getPictureVOPageCache(pictureQueryRequest);
+        // 返回数据
+        return ResultUtils.success(pictureVOPage);
     }
 
     /**
@@ -194,7 +199,8 @@ public class PictureController {
         Picture picture = new Picture();
         BeanUtils.copyProperties(pictureEditRequest, picture);
         // 注意将 list 转为 string
-        picture.setTags(JSONUtil.toJsonStr(pictureEditRequest.getTags()));
+        List<String> tags = pictureEditRequest.getTags();
+        picture.setTags(tags == null ? null : JSON.toJSONString(tags));
         // 设置编辑时间
         picture.setEditTime(new Date());
         // 设置审核参数
@@ -249,6 +255,4 @@ public class PictureController {
         int uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
         return ResultUtils.success(uploadCount);
     }
-
-
 }
