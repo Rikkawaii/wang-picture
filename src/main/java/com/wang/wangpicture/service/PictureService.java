@@ -2,15 +2,12 @@ package com.wang.wangpicture.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wang.wangpicture.model.dto.picture.PictureQueryRequest;
-import com.wang.wangpicture.model.dto.picture.PictureReviewRequest;
-import com.wang.wangpicture.model.dto.picture.PictureUploadByBatchRequest;
-import com.wang.wangpicture.model.dto.picture.PictureUploadRequest;
+import com.wang.wangpicture.model.dto.picture.*;
 import com.wang.wangpicture.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.wang.wangpicture.model.entity.Space;
 import com.wang.wangpicture.model.entity.User;
 import com.wang.wangpicture.model.vo.PictureVO;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -25,15 +22,19 @@ public interface PictureService extends IService<Picture> {
 
     PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
 
-    void deletePictureFile(String url);
+    void checkUploadPicture(Space space, User loginUser);
+
+    void clearPictureFile(Picture oldPicture);
 
     QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest);
 
     void validPicture(Picture picture);
 
-    Page<PictureVO> getPictureVOPage(Page<Picture> picturePage);
+    Page<PictureVO> getPictureVOPage(PictureQueryRequest pictureQueryRequest);
 
     PictureVO getPictureVO(Picture picture, HttpServletRequest request);
+
+    void checkPictureAuth(User loginUser, Picture picture);
 
     void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser);
 
@@ -56,4 +57,8 @@ public interface PictureService extends IService<Picture> {
      * @return
      */
     Page<PictureVO> getPictureVOPageCache(PictureQueryRequest pictureQueryRequest);
+
+    void deletePicture(Long pictureId, User loginUser);
+
+    void editPicture(PictureEditRequest pictureEditRequest, User loginUser);
 }

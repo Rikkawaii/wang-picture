@@ -73,7 +73,10 @@ public class PictureQueryRequest extends PageRequest implements Serializable {
      * 创建用户 id
      */
     private Long userId;
-
+    /**
+     * 图片所在空间id
+     */
+    private Long spaceId;
     /**
      * 搜索词
      */
@@ -92,9 +95,14 @@ public class PictureQueryRequest extends PageRequest implements Serializable {
      * 审核人 id
      */
     private Long reviewerId;
-    /**
-     * 创建时间
+    /*
+     * 开始编辑时间
      */
-    private Date createTime;
+    private Date startEditTime;
+
+    /*
+     * 结束编辑时间
+     */
+    private Date endEditTime;
 
 }

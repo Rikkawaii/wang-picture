@@ -1,6 +1,5 @@
 package com.wang.wangpicture.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wang.wangpicture.annotation.AuthCheck;
 import com.wang.wangpicture.common.BaseResponse;
@@ -79,7 +78,7 @@ public class UserController {
     public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest) {
         ThrowUtils.throwIf(userAddRequest == null, ErrorCode.PARAMS_ERROR);
         User user = new User();
-        BeanUtil.copyProperties(userAddRequest, user);
+        BeanUtils.copyProperties(userAddRequest, user);
         // 默认密码
         final String DEFAULT_PASSWORD = "12345678";
         String encryptPassword = userService.getEncryptPassword(DEFAULT_PASSWORD);

@@ -74,7 +74,10 @@ public class PictureVO implements Serializable {
      * 创建用户 id
      */
     private Long userId;
-
+    /**
+     * 空间 id
+     */
+    private Long spaceId;
     /**
      * 创建时间
      */
@@ -85,10 +88,6 @@ public class PictureVO implements Serializable {
      */
     private Date editTime;
 
-    /**
-     * 更新时间
-     */
-    private Date updateTime;
     /**
      *  创建用户信息
      */

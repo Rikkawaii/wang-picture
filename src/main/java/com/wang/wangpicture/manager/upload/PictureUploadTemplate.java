@@ -18,9 +18,12 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+
 @Slf4j
 @Component
 public abstract class PictureUploadTemplate {
@@ -74,23 +77,34 @@ public abstract class PictureUploadTemplate {
 
     /**
      * 校验图片(如果是url上传方式，则还会返回图片的后缀，如果是文件上传方式，则返回null)
+     *
      * @param inputSource
      */
     protected abstract String validPicture(Object inputSource);
+
     protected abstract void processPicture(Object inputSource, File file) throws IOException;
 
     /**
      * 获取原始文件名
+     *
      * @param inputSource
      * @return
      */
 
     protected abstract String getOriginalFileName(Object inputSource);
-    public void deletePicture(String oldUrl){
-        int publicIndex = oldUrl.indexOf("/public");
-        String key = oldUrl.substring(publicIndex);
-        cosManager.deletePictureObject(key);
+
+    public void deletePicture(String oldUrl) {
+        URL url = null; // 解析 URL
+        try {
+            url = new URL(oldUrl);
+        } catch (MalformedURLException e) {
+            log.error("图片删除失败，url解析失败", e);
+            throw new RuntimeException(e);
+        }
+        String key = url.getPath().substring(1); // 去掉前面的 "/"
+        cosManager.deletePictureObject(key); // 删除对象
     }
+
 
     private void deleteTempFile(File file) {
         if (file != null) {

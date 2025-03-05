@@ -128,7 +128,7 @@ public class PicturePageCacheManager {
             }
             // 缓存中没有数据，则查询数据库，重构Redis缓存，重构本地缓存，并返回数据。
             // 查询数据库
-            pictureVOPage = getPictureVOPage(pictureQueryRequest);
+            pictureVOPage = pictureService.getPictureVOPage(pictureQueryRequest);
             // 得到缓存数据(如果pictureVOPage==null,则返回空字符串应对缓存穿透)
             cacheValue = pictureVOPage == null ? "" : JSON.toJSONString(pictureVOPage);
             // 重构 Redis 缓存（5 - 10 分钟随机过期，防止雪崩）
@@ -146,22 +146,6 @@ public class PicturePageCacheManager {
                 lock.unlock();
             }
         }
-    }
-
-    /**
-     * 查询数据库，并封装成Page<PictureVO>
-     * @param pictureQueryRequest
-     * @return
-     */
-    private Page<PictureVO> getPictureVOPage(PictureQueryRequest pictureQueryRequest) {
-        // 查询数据库
-        int size = pictureQueryRequest.getPageSize();
-        int current = pictureQueryRequest.getCurrent();
-        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
-                pictureService.getQueryWrapper(pictureQueryRequest));
-        // 获取封装类
-        Page<PictureVO> pictureVOPage = pictureService.getPictureVOPage(picturePage);
-        return pictureVOPage;
     }
 
     /**

@@ -1,6 +1,5 @@
 package com.wang.wangpicture.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
@@ -17,6 +16,7 @@ import com.wang.wangpicture.model.vo.LoginUserVO;
 import com.wang.wangpicture.model.vo.UserVO;
 import com.wang.wangpicture.service.UserService;
 import com.wang.wangpicture.mapper.UserMapper;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
@@ -135,7 +135,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             return null;
         }
         LoginUserVO loginUserVO = new LoginUserVO();
-        BeanUtil.copyProperties(user, loginUserVO);
+        BeanUtils.copyProperties(user, loginUserVO);
         return loginUserVO;
     }
 
@@ -151,7 +151,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             return null;
         }
         UserVO userVO = new UserVO();
-        BeanUtil.copyProperties(user, userVO);
+        BeanUtils.copyProperties(user, userVO);
         return userVO;
     }
 
