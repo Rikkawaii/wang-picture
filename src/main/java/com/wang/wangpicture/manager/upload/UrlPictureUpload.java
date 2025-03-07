@@ -86,8 +86,15 @@ public class UrlPictureUpload extends PictureUploadTemplate {
     @Override
     protected String getOriginalFileName(Object inputSource) {
         String fileUrl = (String) inputSource;
-        // 从 URL 中提取文件名
-        return fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
+        URL url = null;
+        String originalFileName = null;
+        try {
+            url = new URL(fileUrl);
+            originalFileName = url.getPath();
+        } catch (MalformedURLException e) {
+            originalFileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
+        }
+        return originalFileName;
     }
 
     @Override

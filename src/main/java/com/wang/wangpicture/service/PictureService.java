@@ -2,6 +2,8 @@ package com.wang.wangpicture.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wang.wangpicture.api.imageoutpainting.model.CreateOutPaintingTaskResponse;
+import com.wang.wangpicture.api.imageoutpainting.model.GetOutPaintingTaskResponse;
 import com.wang.wangpicture.model.dto.picture.*;
 import com.wang.wangpicture.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -17,7 +19,7 @@ import javax.servlet.http.HttpServletRequest;
 * @createDate 2025-02-25 22:30:20
 */
 public interface PictureService extends IService<Picture> {
-
+    GetOutPaintingTaskResponse getOutPaintingTask(String taskId);
 //    PictureVO uploadPicture(MultipartFile multipartFile, PictureUploadRequest pictureUploadRequest, User loginUser);
 
     PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
@@ -35,6 +37,8 @@ public interface PictureService extends IService<Picture> {
     PictureVO getPictureVO(Picture picture, HttpServletRequest request);
 
     void checkPictureAuth(User loginUser, Picture picture);
+
+    void checkSpaceAuth(User loginUser, Long spaceId);
 
     void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser);
 
@@ -61,4 +65,8 @@ public interface PictureService extends IService<Picture> {
     void deletePicture(Long pictureId, User loginUser);
 
     void editPicture(PictureEditRequest pictureEditRequest, User loginUser);
+
+    void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser);
+
+    CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
 }

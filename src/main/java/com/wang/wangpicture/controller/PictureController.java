@@ -1,10 +1,14 @@
 package com.wang.wangpicture.controller;
 
 import com.alibaba.fastjson.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wang.wangpicture.annotation.AuthCheck;
+import com.wang.wangpicture.api.imageoutpainting.model.CreateOutPaintingTaskResponse;
+import com.wang.wangpicture.api.imageoutpainting.model.GetOutPaintingTaskResponse;
+import com.wang.wangpicture.api.imagesearch.ImageSearchApiFacade;
+import com.wang.wangpicture.api.imagesearch.model.ImageSearchResult;
 import com.wang.wangpicture.common.BaseResponse;
+import com.wang.wangpicture.common.DeleteByBatchRequest;
 import com.wang.wangpicture.common.DeleteRequest;
 import com.wang.wangpicture.common.ResultUtils;
 import com.wang.wangpicture.constant.UserConstant;
@@ -12,6 +16,7 @@ import com.wang.wangpicture.exception.BusinessException;
 import com.wang.wangpicture.exception.ErrorCode;
 import com.wang.wangpicture.exception.ThrowUtils;
 import com.wang.wangpicture.model.dto.picture.*;
+import com.wang.wangpicture.model.dto.user.UserLoginRequest;
 import com.wang.wangpicture.model.entity.Space;
 import com.wang.wangpicture.model.enums.PictureReviewStatusEnum;
 import com.wang.wangpicture.model.vo.PictureTagCategory;
@@ -28,7 +33,6 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -137,7 +141,7 @@ public class PictureController {
         Long spaceId = picture.getSpaceId();
         if (spaceId != null) {
             User loginUser = userService.getLoginUser(request);
-            pictureService.checkPictureAuth(loginUser, picture);
+            pictureService.checkSpaceAuth(loginUser, spaceId);
         }else{
             // 公开图库需判断是否已过审
             ThrowUtils.throwIf(picture.getReviewStatus() != PictureReviewStatusEnum.PASS.getValue(), ErrorCode.NO_AUTH_ERROR, "图片未通过审核");
@@ -180,11 +184,7 @@ public class PictureController {
         } else {
             // 私有空间
             User loginUser = userService.getLoginUser(request);
-            Space space = spaceService.getById(spaceId);
-            ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
-            if (!loginUser.getId().equals(space.getUserId())) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
-            }
+            pictureService.checkSpaceAuth(loginUser, spaceId);
         }
         // 获取缓存数据，如果数据为空，会重构缓存(针对公共图库)
         Page<PictureVO> pictureVOPage = null;
@@ -251,4 +251,73 @@ public class PictureController {
         int uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
         return ResultUtils.success(uploadCount);
     }
+
+    /**
+     * 以图搜图
+     * @param pictureSearchRequest 当前搜索图片id
+     * @param request
+     * @return 相似图片url集合
+     */
+    @PostMapping("/search/picture")
+    public BaseResponse<List<ImageSearchResult>> searchPicture(@RequestBody PictureSearchRequest pictureSearchRequest,
+                                                      HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureSearchRequest == null, ErrorCode.PARAMS_ERROR);
+        Long pictureId = pictureSearchRequest.getPictureId();
+        ThrowUtils.throwIf(pictureId == null || pictureId <= 0, ErrorCode.PARAMS_ERROR);
+        // note: 已更改为链式调用。
+        Picture picture = pictureService.lambdaQuery().select(Picture::getUrl).eq(Picture::getId, pictureId).one();
+        ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR);
+        String url = picture.getUrl();
+        List<ImageSearchResult> imageSearchResults = ImageSearchApiFacade.searchImage(url);
+        return ResultUtils.success(imageSearchResults);
+    }
+
+    /**
+     * 批量删除图片
+     */
+    @PostMapping("/delete/batch")
+    public BaseResponse<Boolean> deletePictureByBatch(@RequestBody DeleteByBatchRequest deleteByBatchRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(deleteByBatchRequest == null, ErrorCode.PARAMS_ERROR);
+        List<Long> pictureIds = deleteByBatchRequest.getPictureIds();
+        ThrowUtils.throwIf(pictureIds == null || pictureIds.size() == 0, ErrorCode.PARAMS_ERROR);
+        Long spaceId = deleteByBatchRequest.getSpaceId();
+        User loginUser = userService.getLoginUser(request);
+        // 校验是否有对该空间进行批量删除的权限
+        pictureService.checkSpaceAuth(loginUser, spaceId);
+        // 批量删除图片
+        pictureService.removeBatchByIds(pictureIds);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 批量编辑图片(修改分类和标签)
+     * @param pictureEditByBatchRequest
+     * @param request
+     * @return
+     */
+
+    @PostMapping("/edit/batch")
+    public BaseResponse<Boolean> editPictureByBatch(@RequestBody PictureEditByBatchRequest pictureEditByBatchRequest, HttpServletRequest request){
+        ThrowUtils.throwIf(pictureEditByBatchRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        pictureService.editPictureByBatch(pictureEditByBatchRequest, loginUser);
+        return ResultUtils.success(true);
+    }
+
+    @PostMapping("/out_painting/create_task")
+    public BaseResponse<CreateOutPaintingTaskResponse> createPictureOutPaintingTask(@RequestBody CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(createPictureOutPaintingTaskRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        // 鉴权并创建扩图任务
+        CreateOutPaintingTaskResponse createOutPaintingTaskResponse = pictureService.createPictureOutPaintingTask(createPictureOutPaintingTaskRequest, loginUser);
+        return ResultUtils.success(createOutPaintingTaskResponse);
+    }
+
+    @GetMapping("/out_painting/get_task")
+    public BaseResponse<GetOutPaintingTaskResponse> getOutPaintingTask(String taskId) {
+        ThrowUtils.throwIf(taskId == null, ErrorCode.PARAMS_ERROR);
+        GetOutPaintingTaskResponse getOutPaintingTaskResponse = pictureService.getOutPaintingTask(taskId);
+        return ResultUtils.success(getOutPaintingTaskResponse);
+    }
+
 }
