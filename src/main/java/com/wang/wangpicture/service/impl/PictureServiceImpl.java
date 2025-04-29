@@ -3,6 +3,7 @@ package com.wang.wangpicture.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -14,6 +15,7 @@ import com.wang.wangpicture.api.imageoutpainting.AliYunApi;
 import com.wang.wangpicture.api.imageoutpainting.model.CreateOutPaintingTaskRequest;
 import com.wang.wangpicture.api.imageoutpainting.model.CreateOutPaintingTaskResponse;
 import com.wang.wangpicture.api.imageoutpainting.model.GetOutPaintingTaskResponse;
+import com.wang.wangpicture.constant.RedisConstant;
 import com.wang.wangpicture.exception.BusinessException;
 import com.wang.wangpicture.exception.ErrorCode;
 import com.wang.wangpicture.exception.ThrowUtils;
@@ -94,13 +96,21 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Override
     public PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser) {
-        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
         ThrowUtils.throwIf(pictureUploadRequest == null, ErrorCode.PARAMS_ERROR, "图片上传请求参数不能为空");
         // 校验spaceId对应空间的容量和权限
         Long spaceId = pictureUploadRequest.getSpaceId();
         if (spaceId != null) {
             Space space = spaceService.getById(spaceId);
-            checkUploadPicture(space, loginUser);
+            ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+            // 检验,已使用注解鉴权
+//            checkUploadPicture(space, loginUser);
+            // 校验额度
+            if (space.getTotalCount() >= space.getMaxCount()) {
+                throw new BusinessException(ErrorCode.OPERATION_ERROR, "空间条数不足");
+            }
+            if (space.getTotalSize() >= space.getMaxSize()) {
+                throw new BusinessException(ErrorCode.OPERATION_ERROR, "空间大小不足");
+            }
         }
 
         // 用于判断是新增还是更新图片
@@ -110,10 +120,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (pictureId != null) {
             Picture oldPicture = this.getById(pictureId);
             ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
-            // 仅本人或管理员可编辑
-            if (!oldPicture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-            }
+            // 仅本人或管理员可编辑, 已使用注解鉴权
+//            if (!oldPicture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
+//                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+//            }
 
             // 校验空间是否一致
             // 没传 spaceId，则复用原有图片的 spaceId
@@ -185,6 +195,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
             return picture;
         });
+        picturePageCacheManager.deleteCache(RedisConstant.PAGE_CACHE_KEY);
         return PictureVO.objToVo(picture);
     }
 
@@ -439,7 +450,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Integer count = pictureUploadByBatchRequest.getCount();
         ThrowUtils.throwIf(count > 30, ErrorCode.PARAMS_ERROR, "最多 30 条");
         // 要抓取的地址
-        String fetchUrl = String.format("https://cn.bing.com/images/async?q=%s&mmasync=1", searchText);
+        String fetchUrl = String.format("https://cn.bing.com/images/async?q=%s&mmasync=1&first=%s", searchText, RandomUtil.randomInt(1, 100) * count);
         Document document;
         try {
             document = Jsoup.connect(fetchUrl).get();
@@ -518,12 +529,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Override
     public void deletePicture(Long pictureId, User loginUser) {
         ThrowUtils.throwIf(pictureId <= 0, ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
         // 判断是否存在
         Picture oldPicture = this.getById(pictureId);
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
-        // 校验权限
-        checkPictureAuth(loginUser, oldPicture);
+        // 校验权限, 已使用注解解鉴权
+//        checkPictureAuth(loginUser, oldPicture);
         // 开启事务
         transactionTemplate.execute(status -> {
             // 操作数据库
@@ -551,8 +561,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         long id = pictureEditRequest.getId();
         Picture oldPicture = this.getById(id);
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
-        // 校验权限
-        checkPictureAuth(loginUser, oldPicture);
+        // 校验权限，已使用注解鉴权
+//        checkPictureAuth(loginUser, oldPicture);
         // 在此处将实体类和 DTO 进行转换http
         Picture picture = new Picture();
         BeanUtils.copyProperties(pictureEditRequest, picture);
@@ -573,10 +583,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser) {
-        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
-        // 校验权限
         Long spaceId = pictureEditByBatchRequest.getSpaceId();
-        checkSpaceAuth(loginUser, spaceId);
+        // 校验权限，已使用注解鉴权
+//        checkSpaceAuth(loginUser, spaceId);
         List<Long> idList = pictureEditByBatchRequest.getPictureIdList();
         ThrowUtils.throwIf(CollUtil.isEmpty(idList), ErrorCode.PARAMS_ERROR, "未选择图片");
         // 批量获取图片列表(只取出id和spaceId)
@@ -627,8 +636,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         ThrowUtils.throwIf(pictureId == null, ErrorCode.PARAMS_ERROR, "图片id不能为空");
         Picture picture = this.getById(pictureId);
         ThrowUtils.throwIf(picture == null, ErrorCode.NOT_FOUND_ERROR, "图片不存在");
-        // 校验是否有权限操作图片
-        checkPictureAuth(loginUser, picture);
+        // 校验是否有权限操作图片, 已改为注解鉴权
+//        checkPictureAuth(loginUser, picture);
         String imageUrl = picture.getUrl();
         CreateOutPaintingTaskRequest createOutPaintingTaskRequest = new CreateOutPaintingTaskRequest();
         CreateOutPaintingTaskRequest.Input input = new CreateOutPaintingTaskRequest.Input();

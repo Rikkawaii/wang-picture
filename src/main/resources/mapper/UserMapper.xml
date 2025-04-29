@@ -9,6 +9,7 @@
             <result property="userAccount" column="userAccount" jdbcType="VARCHAR"/>
             <result property="userPassword" column="userPassword" jdbcType="VARCHAR"/>
             <result property="userName" column="userName" jdbcType="VARCHAR"/>
+            <result property="email" column="email" jdbcType="VARCHAR"/>
             <result property="userAvatar" column="userAvatar" jdbcType="VARCHAR"/>
             <result property="userProfile" column="userProfile" jdbcType="VARCHAR"/>
             <result property="userRole" column="userRole" jdbcType="VARCHAR"/>
@@ -20,7 +21,7 @@
 
     <sql id="Base_Column_List">
         id,userAccount,userPassword,
-        userName,userAvatar,userProfile,
+        userName, email, userAvatar,userProfile,
         userRole,editTime,createTime,
         updateTime,isDelete
     </sql>

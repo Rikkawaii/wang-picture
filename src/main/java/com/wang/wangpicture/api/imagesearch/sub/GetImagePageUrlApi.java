@@ -69,7 +69,7 @@ public class GetImagePageUrlApi {
 
     public static void main(String[] args) {
         // 测试以图搜图功能
-        String imageUrl = "https://www.codefather.cn/logo.png";
+        String imageUrl = "https://img.shetu66.com/2023/07/14/1689302077000124.png";
         String result = getImagePageUrl(imageUrl);
         System.out.println("搜索成功，结果 URL：" + result);
     }

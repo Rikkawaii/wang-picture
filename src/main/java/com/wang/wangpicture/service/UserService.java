@@ -17,6 +17,9 @@ import java.util.List;
 */
 public interface UserService extends IService<User> {
     long userRegister(String userAccount, String userPassword, String checkPassword);
+
+    long userEmailRegister(String userAccount, String userPassword, String checkPassword, String email, String code);
+
     LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
 
     User getLoginUser(HttpServletRequest request);
@@ -34,4 +37,6 @@ public interface UserService extends IService<User> {
     String getEncryptPassword(String defaultPassword);
 
     boolean isAdmin(User loginUser);
+
+    void sendRegisterCode(String email);
 }

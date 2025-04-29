@@ -9,6 +9,7 @@ import com.wang.wangpicture.constant.UserConstant;
 import com.wang.wangpicture.exception.BusinessException;
 import com.wang.wangpicture.exception.ErrorCode;
 import com.wang.wangpicture.exception.ThrowUtils;
+import com.wang.wangpicture.manager.auth.SpaceUserAuthManager;
 import com.wang.wangpicture.model.dto.space.SpaceAddRequest;
 import com.wang.wangpicture.model.dto.space.SpaceQueryRequest;
 import com.wang.wangpicture.model.dto.space.SpaceUpdateRequest;
@@ -36,6 +37,8 @@ public class SpaceController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private SpaceUserAuthManager spaceUserAuthManager;
     /**
      * 创建空间
      * @return 空间id
@@ -126,8 +129,8 @@ public class SpaceController {
         ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR);
         SpaceVO spaceVO = spaceService.getSpaceVO(space, request);
         User loginUser = userService.getLoginUser(request);
-//        List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
-//        spaceVO.setPermissionList(permissionList);
+        List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
+        spaceVO.setPermissionList(permissionList);
         // 获取封装类
         return ResultUtils.success(spaceVO);
     }

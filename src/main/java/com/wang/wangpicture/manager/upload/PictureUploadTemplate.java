@@ -32,7 +32,13 @@ public abstract class PictureUploadTemplate {
     @Resource
     private CosManager cosManager;
 
-    public UploadPictureResult uploadPicture(Object inputSource, String uploadPathPrefix) {
+    /**
+     *
+     * @param inputSource 图片文件或url
+     * @param uploadPathPrefix "/public/用户id“或”/private/用户id“
+     * @return
+     */
+    public UploadPictureResult uploadPicture (Object inputSource, String uploadPathPrefix) {
         // 1. 校验图片
         String suffix = validPicture(inputSource);
         // 2. 构造图片上传地址
@@ -66,7 +72,7 @@ public abstract class PictureUploadTemplate {
             uploadPictureResult.setPicScale(picScale);
             uploadPictureResult.setPicFormat(imageInfo.getFormat());
             return uploadPictureResult;
-        } catch (Exception e) {
+        }catch (IOException e) {
             log.error("图片上传对象存储失败", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
         } finally {
@@ -81,6 +87,13 @@ public abstract class PictureUploadTemplate {
      * @param inputSource
      */
     protected abstract String validPicture(Object inputSource);
+
+    /**
+     * 将图片放在临时文件中
+     * @param inputSource
+     * @param file
+     * @throws IOException
+     */
 
     protected abstract void processPicture(Object inputSource, File file) throws IOException;
 
