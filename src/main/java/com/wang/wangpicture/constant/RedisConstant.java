@@ -2,7 +2,12 @@ package com.wang.wangpicture.constant;
 
 import java.util.concurrent.TimeUnit;
 
-public interface PictureVOPageCacheConstant {
+public interface RedisConstant {
+
+    String EMAIL_REGISTER_CODE_KEY = "wangpicture:emailRegisterCode:";
+    String EMAIL_REGISTER_CODE_LOCK_KEY = "wangpicture:emailRegisterCode:lock:";
+    long EMAIL_REGISTER_CODE_LOCK_EXPIRE = 60;
+
     // 分页查询图片缓存key
     String PAGE_CACHE_KEY = "wangpicture:listPictureVOPage:";
     // 分页查询图片缓存过期时间

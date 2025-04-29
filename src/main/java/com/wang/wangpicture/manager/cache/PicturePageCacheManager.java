@@ -5,16 +5,15 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Expiry;
 import com.wang.wangpicture.model.dto.picture.PictureQueryRequest;
-import com.wang.wangpicture.model.entity.Picture;
 import com.wang.wangpicture.model.vo.PictureVO;
 import com.wang.wangpicture.service.PictureService;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.index.qual.NonNegative;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Component;
@@ -22,8 +21,9 @@ import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import java.time.Duration;
+import java.util.Map;
 
-import static com.wang.wangpicture.constant.PictureVOPageCacheConstant.*;
+import static com.wang.wangpicture.constant.RedisConstant.*;
 
 
 @Component
@@ -49,33 +49,54 @@ public class PicturePageCacheManager {
     private final Cache<String, String> localCache = Caffeine.newBuilder()
             .initialCapacity(1024)
             .maximumSize(10000)// 最大 10000 条
-            .expireAfter(new Expiry<Object, Object>() {
-                // 缓存 5 分钟(300 秒)后移除
-                long expireTime = PAGE_CACHE_EXPIRE;
-
-                // 以下方法返回的都是纳秒
-                @Override
-                public long expireAfterCreate(Object key, Object value, long currentTime) {
-                    // 创建时延长过期时间
-                    return SECONDS_UNIT.toNanos(expireTime);
-                }
-
-                @Override
-                public long expireAfterUpdate(Object key, Object value, long currentTime, @NonNegative long currentDuration) {
-                    // 更新时延长过期时间
-                    return SECONDS_UNIT.toNanos(expireTime);
-                }
-
-                @Override
-                public long expireAfterRead(Object key, Object value, long currentTime, @NonNegative long currentDuration) {
-                    // 读取时延长过期时间
-                    return SECONDS_UNIT.toNanos(expireTime);
-                }
-            })
+            .expireAfterWrite(Duration.ofSeconds(PAGE_CACHE_EXPIRE))
             .build();
 
-    // todo: 待实现删除缓存
-    public void deleteCache(PictureQueryRequest pictureQueryRequest) {
+//     .expireAfter(new Expiry<Object, Object>() {
+//        // 缓存 5 分钟(300 秒)后移除
+//        long expireTime = PAGE_CACHE_EXPIRE;
+//
+//        // 以下方法返回的都是纳秒
+//        @Override
+//        public long expireAfterCreate(Object key, Object value, long currentTime) {
+//            // 创建时延长过期时间
+//            return SECONDS_UNIT.toNanos(expireTime);
+//        }
+//
+//        @Override
+//        public long expireAfterUpdate(Object key, Object value, long currentTime, @NonNegative long currentDuration) {
+//            // 更新时延长过期时间
+//            return SECONDS_UNIT.toNanos(expireTime);
+//        }
+//
+//        @Override
+//        public long expireAfterRead(Object key, Object value, long currentTime, @NonNegative long currentDuration) {
+//            // 读取时延长过期时间
+//            return SECONDS_UNIT.toNanos(expireTime);
+//        }
+//    })
+//            .build();
+
+    // todo: 该功能目前有问题,不推荐使用
+    public void deleteCache(String prefix) {
+        // 1. 删除 Redis 缓存
+        // 使用 SCAN 命令匹配前缀
+        ScanOptions scanOptions = ScanOptions.scanOptions().match(prefix + "*").build();
+        Cursor<String> cursor = stringRedisTemplate.scan(scanOptions);
+        // 遍历匹配的键并删除
+        while (cursor.hasNext()) {
+            String key = cursor.next();
+            stringRedisTemplate.unlink(key);
+        }
+        // 2. 删除本地缓存
+        // 获取所有缓存键
+        Map<String, String> cacheMap = localCache.asMap();
+        for (String key : cacheMap.keySet()) {
+            // 如果键以指定前缀开头，清除该缓存
+            if (key.startsWith(prefix)) {
+                localCache.invalidate(key);
+            }
+        }
     }
 
     /**

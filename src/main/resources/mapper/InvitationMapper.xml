@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wang.wangpicture.mapper.InvitationMapper">
+
+    <resultMap id="BaseResultMap" type="com.wang.wangpicture.model.entity.Invitation">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="email" column="email" jdbcType="VARCHAR"/>
+            <result property="spaceId" column="spaceId" jdbcType="BIGINT"/>
+            <result property="token" column="token" jdbcType="VARCHAR"/>
+            <result property="expires_at" column="expires_at" jdbcType="TIMESTAMP"/>
+            <result property="used" column="used" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,email,spaceId,
+        token,expires_at,used
+    </sql>
+</mapper>

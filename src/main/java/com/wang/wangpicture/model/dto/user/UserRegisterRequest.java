@@ -17,4 +17,8 @@ public class UserRegisterRequest implements Serializable {
     private String userPassword;
     // 定义一个私有字符串变量checkPassword，用于存储确认密码
     private String checkPassword;
+    // 定义一个私有字符串变量email，用于存储邮箱
+    private String email;
+    // 定义一个私有字符串变量code,用于存储验证码
+    private String code;
 }

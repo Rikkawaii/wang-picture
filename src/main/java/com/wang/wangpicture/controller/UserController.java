@@ -14,12 +14,16 @@ import com.wang.wangpicture.model.entity.User;
 import com.wang.wangpicture.model.vo.LoginUserVO;
 import com.wang.wangpicture.model.vo.UserVO;
 import com.wang.wangpicture.service.UserService;
+import jodd.util.StringUtil;
+import org.apache.commons.codec.binary.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/user")
@@ -27,7 +31,6 @@ public class UserController {
 
     @Resource
     private UserService userService;
-
     /**
      * 用户注册
      */
@@ -39,6 +42,39 @@ public class UserController {
         String checkPassword = userRegisterRequest.getCheckPassword();
         long result = userService.userRegister(userAccount, userPassword, checkPassword);
         return ResultUtils.success(result);
+    }
+    @PostMapping("/email/register")
+    public BaseResponse<Long> userEmailRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
+        ThrowUtils.throwIf(userRegisterRequest == null, ErrorCode.PARAMS_ERROR);
+        String email = userRegisterRequest.getEmail();
+        String code = userRegisterRequest.getCode();
+        if (StringUtil.isBlank(email) || StringUtil.isBlank(code)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"邮箱或邮箱验证码不能为空！！！");
+        }
+        String userAccount = email; // 邮箱注册用户账号默认为邮箱
+        String userPassword = userRegisterRequest.getUserPassword();
+        String checkPassword = userRegisterRequest.getCheckPassword();
+        long result = userService.userEmailRegister(userAccount, userPassword, checkPassword, email, code);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 发送邮箱验证码
+     * @param email
+     * @return
+     */
+    @GetMapping("/register/email/code")
+    public BaseResponse<Boolean> sendCode(@RequestParam String email){
+        if (StringUtil.isBlank(email)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        //^1[3-9]\d{9}$ 手机号正则表达式
+        //^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$    邮箱正则表达式
+        if (!Pattern.matches("[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$", email)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"邮箱格式错误!");
+        }
+        userService.sendRegisterCode(email);
+        return ResultUtils.success(true);
     }
     /**
      * 用户登录
